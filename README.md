@@ -18,4 +18,8 @@ Account - class with my balances and debts
 
 main - all algorithms run from here
 
-
+Used modules, libaries and packages (install before start)
+- matplotlib - creating plots
+- ta - technical analysis
+- pandas - work with csv files
+- os - checking if file already exist
