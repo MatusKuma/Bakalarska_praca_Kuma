@@ -10,24 +10,19 @@ def count_trading_fee(money, trading_fee_rate):
 
 
 def open_trade(trade_number, open_price, my_account, quantity, trading_fee_rate, type_of_trade, date):
-
-
-
-
+    quote_amount = (quantity / 100.0) * my_account.quote_balance
     if type_of_trade == 1:
-        quote_amount = (quantity / 100.0) * my_account.quote_balance
+
         trading_fee = count_trading_fee(quote_amount, trading_fee_rate)
 
         my_account.quote_balance = my_account.quote_balance - trading_fee
         long_or_short = "long"
         action = "buy"
         my_account.base_balance = my_account.base_balance + (quote_amount - trading_fee)/open_price
-        amount = (quote_amount - trading_fee)/open_price
+        base_amount = (quote_amount - trading_fee)/open_price
     else:
         base_amount = ((quantity / 100.0) * my_account.quote_balance)/open_price
         trading_fee = count_trading_fee(base_amount, trading_fee_rate)
-
-        my_account.quote_balance = my_account.quote_balance + (base_amount-trading_fee)*open_price
         long_or_short = "short"
         action = "sell"
         my_account.base_debt = my_account.base_debt + base_amount
@@ -37,14 +32,13 @@ def open_trade(trade_number, open_price, my_account, quantity, trading_fee_rate,
         "trade_number": int(trade_number),
         "price": open_price,
         "type": long_or_short,
-        "base_amount": amount,
+        "base_amount": base_amount,
         "quote_amount": quote_amount,
         "quantity": quantity,
         "trading_fee": trading_fee,
         "date": date,
         "quote_balance": my_account.quote_balance,
         "base_balance": my_account.base_balance,
-        "quote_debt": my_account.quote_debt,
         "base_debt": my_account.base_debt,
     }
 
@@ -58,28 +52,26 @@ def close_trade(trades, trade_number, close_price, my_account, trading_fee_rate,
     open_price = trades[(trade_number * 2) - 2]['price']
     type_of_trade = trades[(trade_number * 2) - 2]['type']
     quantity = trades[(trade_number * 2) - 2]['quantity']
-    amount = trades[(trade_number * 2) - 2]['amount']
-    quote = trades[(trade_number * 2) - 2]['quote_amount']
-    quote_amount = trades[(trade_number * 2) - 2]['quote_amount'] + trades[(trade_number * 2) - 2]['quote_debt']
+    base_amount = trades[(trade_number * 2) - 2]['base_amount']
+    quote_amount = trades[(trade_number * 2) - 2]['quote_amount']
+
 
     if type_of_trade == 'long':
         profit_percentage = close_price/open_price
-        quote_amount *= profit_percentage
-        profit = quote_amount - my_account.quote_debt
+        quote_amount_close = profit_percentage*quote_amount
+        profit = quote_amount_close - quote_amount
         my_account.quote_balance = my_account.quote_balance + profit
         my_account.base_balance = 0
-        my_account.quote_debt = 0
+
         my_account.base_debt = 0
         action = "sell"
 
 
     else:
-        profit_percentage = close_price / open_price
-        quote_amount *= profit_percentage
-        profit = quote_amount - my_account.quote_debt
-        my_account.quote_balance = my_account.quote_balance + profit
+        debt = my_account.base_debt * close_price
+        my_account.quote_balance = my_account.quote_balance + quote_amount - debt
         my_account.base_balance = 0
-        my_account.quote_debt = 0
+
         my_account.base_debt = 0
         action = "buy"
 
@@ -92,15 +84,14 @@ def close_trade(trades, trade_number, close_price, my_account, trading_fee_rate,
         "trade_number": int(trade_number),
         "price": close_price,
         "type": type_of_trade,
-        "base_amount": amount,
-        "quote_amount": quote,
+        "base_amount": base_amount,
+        "quote_amount": quote_amount,
         "trading_fee": trading_fee,
         "quantity": quantity,
         "date": date,
         "quote_balance": my_account.quote_balance,
         "base_balance": my_account.base_balance,
         "base_debt": my_account.base_debt,
-        "quote_debt": my_account.quote_debt,
 
     }
 
