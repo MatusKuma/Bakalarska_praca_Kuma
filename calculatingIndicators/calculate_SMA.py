@@ -2,7 +2,7 @@ import pandas as pd
 from ta.trend import SMAIndicator
 
 
-file = pd.read_csv('BTCUSD_1h_with_indicators.csv')
+file = pd.read_csv('../data/BTCUSD_1h_with_indicators.csv')
 
 sma_7 = SMAIndicator(file['close'], window=7)
 file['SMA_7'] = sma_7.sma_indicator()
