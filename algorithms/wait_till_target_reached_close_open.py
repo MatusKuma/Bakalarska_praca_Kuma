@@ -1,15 +1,17 @@
 from Account import MyAccount
 from trade_lib.my_trade_library import count_profit, open_trade, close_trade, \
     print_trade_info, print_total_statistics, calculate_stats, create_plot
-from trade_lib.data_manager import save_trades_to_file, save_stat_to_file, load_data
+from trade_lib.data_manager import save_trades_to_file, save_stat_to_file, load_data, getRequiredDataFromTrades
 
 
 # Start trading
-def exec_trading(df, my_Account, percent, trade_file, stat_file, trading_fee_rate, date_from, date_to):
+def exec_trading(df, my_Account, percent, trade_file, stat_file, trade_file_req_data, trading_fee_rate, date_from, date_to):
     try:
+        unix_index = df.columns.get_loc("unix")
+        date_index = df.columns.get_loc("date")
         open_index = df.columns.get_loc("open")
         high_index = df.columns.get_loc("high")
-        date_index = df.columns.get_loc("date")
+        low_index = df.columns.get_loc("low")
         close_index = df.columns.get_loc("close")
     except KeyError:
         print("Column not found!")
@@ -20,20 +22,25 @@ def exec_trading(df, my_Account, percent, trade_file, stat_file, trading_fee_rat
     trade_number = 1
     prices = []
     balance = []
-    last_price = 0
+    last_close_price = 0
     close_price = 0
     date = 0
 
     for _, row in df.iterrows():
         open_price = row.iloc[open_index]
         high_price = row.iloc[high_index]
-        date = row.iloc[date_index]
+        low_price = row.iloc[low_index]
         close_price = row.iloc[close_index]
+        date = row.iloc[date_index]
+        unix = row.iloc[unix_index]
         prices.append(open_price)
         balance.append(my_Account.quote_balance)
+        if last_close_price == 0:
+            last_close_price = close_price
+            continue
         if target_price is None:
 
-            trade_info = open_trade(trade_number, open_price, my_Account, 100, trading_fee_rate, 1, date)
+            trade_info = open_trade(unix, trade_number, last_close_price, my_Account, 100, trading_fee_rate, 1, date, high_price, low_price, close_price)
             trades.append(trade_info)
             print_trade_info(trade_info)
 
@@ -43,12 +50,12 @@ def exec_trading(df, my_Account, percent, trade_file, stat_file, trading_fee_rat
 
         while high_price >= target_price:
             print("Target reached:", target_price)
-            trade_info = close_trade(trades, trade_number, target_price, my_Account, trading_fee_rate, date)
+            trade_info = close_trade(unix, trades, trade_number, target_price, my_Account, trading_fee_rate, date, high_price, low_price, close_price)
             trades.append(trade_info)
             print_trade_info(trade_info)
             trade_number += 1
             open_price = target_price
-            trade_info = open_trade(trade_number, open_price, my_Account, 100, trading_fee_rate, 1, date)
+            trade_info = open_trade(unix, trade_number, open_price, my_Account, 100, trading_fee_rate, 1, date, high_price, low_price, close_price)
             trades.append(trade_info)
             print_trade_info(trade_info)
 
@@ -58,18 +65,20 @@ def exec_trading(df, my_Account, percent, trade_file, stat_file, trading_fee_rat
 
     if len(trades) != 0:
 
-        trade_info = close_trade(trades, trade_number, close_price, my_Account, trading_fee_rate, date)
+        trade_info = close_trade(unix, trades, trade_number, close_price, my_Account, trading_fee_rate, date, high_price, low_price, close_price)
         trades.append(trade_info)
         balance[-1] = my_Account.quote_balance
 
     save_trades_to_file(trades, trade_file)
+    trades_with_required_data = getRequiredDataFromTrades(trades)
+    save_stat_to_file(trades_with_required_data, trade_file_req_data)
     stats = calculate_stats(trades, date_from, date_to)
     save_stat_to_file([stats], stat_file)
     print_total_statistics(trades, date_from, date_to)
     create_plot(stat_file, balance, prices)
 
 
-def start_trading(initial_balance, percent, trade_file, stat_file, trading_fee, data_file, date_from, date_to):
+def start_trading(initial_balance, percent, trade_file, stat_file, trade_file_req_data, trading_fee, data_file, date_from, date_to):
 
     # Trading parameters
     my_Account = MyAccount()
@@ -88,4 +97,4 @@ def start_trading(initial_balance, percent, trade_file, stat_file, trading_fee, 
     file = file[index_start:index_end]
     stat_file = stat_file
 
-    exec_trading(file, my_Account, percent, trade_file, stat_file, trading_fee_rate, date_from, date_to)
+    exec_trading(file, my_Account, percent, trade_file, stat_file, trade_file_req_data, trading_fee_rate, date_from, date_to)

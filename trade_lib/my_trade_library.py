@@ -9,34 +9,43 @@ def count_trading_fee(money, trading_fee_rate):
     return money * trading_fee_rate
 
 
-def open_trade(trade_number, open_price, my_account, quantity, trading_fee_rate, type_of_trade, date):
+def open_trade(unix, trade_number, open_price, my_account, quantity, trading_fee_rate, type_of_trade, date, high_price, low_price, close_price):
     quote_amount = (quantity / 100.0) * my_account.quote_balance
     if type_of_trade == 1:
 
         trading_fee = count_trading_fee(quote_amount, trading_fee_rate)
 
         my_account.quote_balance = my_account.quote_balance - trading_fee
-        long_or_short = "long"
-        action = "buy"
+        long_or_short = "LONG"
+        operation = "BUY"
         my_account.base_balance = my_account.base_balance + (quote_amount - trading_fee)/open_price
         base_amount = (quote_amount - trading_fee)/open_price
+        operation_stop_price = open_price * 0.95
     else:
         base_amount = ((quantity / 100.0) * my_account.quote_balance)/open_price
         trading_fee = count_trading_fee(base_amount, trading_fee_rate)
-        long_or_short = "short"
-        action = "sell"
+        long_or_short = "SHORT"
+        operation = "SELL"
+        operation_stop_price = open_price * 1.05
         my_account.base_debt = my_account.base_debt + base_amount
 
     trade_info = {
-        "action": action,
+        "unix": unix,
+        "date": date,
         "trade_number": int(trade_number),
+        "action": long_or_short,
+        "operation": operation,
+        "operation_price": open_price,
+        "operation_stop_price": operation_stop_price,
         "price": open_price,
-        "type": long_or_short,
+        "open": open_price,
+        "high": high_price,
+        "low": low_price,
+        "close": close_price,
         "base_amount": base_amount,
         "quote_amount": quote_amount,
         "quantity": quantity,
         "trading_fee": trading_fee,
-        "date": date,
         "quote_balance": my_account.quote_balance,
         "base_balance": my_account.base_balance,
         "base_debt": my_account.base_debt,
@@ -45,50 +54,61 @@ def open_trade(trade_number, open_price, my_account, quantity, trading_fee_rate,
     return trade_info
 
 
-def close_trade(trades, trade_number, close_price, my_account, trading_fee_rate, date):
+def close_trade(unix, trades, trade_number, open_price, my_account, trading_fee_rate, date, high_price, low_price, close_price):
 
 
 
-    open_price = trades[(trade_number * 2) - 2]['price']
-    type_of_trade = trades[(trade_number * 2) - 2]['type']
+    last_price = trades[(trade_number * 2) - 2]['price']
+    action = trades[(trade_number * 2) - 2]['action']
     quantity = trades[(trade_number * 2) - 2]['quantity']
     base_amount = trades[(trade_number * 2) - 2]['base_amount']
     quote_amount = trades[(trade_number * 2) - 2]['quote_amount']
+    operation_stop_price = trades[(trade_number * 2) - 2]['operation_stop_price']
 
 
-    if type_of_trade == 'long':
-        profit_percentage = close_price/open_price
+
+    if action == 'LONG':
+        profit_percentage = open_price / last_price
         quote_amount_close = profit_percentage*quote_amount
         profit = quote_amount_close - quote_amount
         my_account.quote_balance = my_account.quote_balance + profit
         my_account.base_balance = 0
 
         my_account.base_debt = 0
-        action = "sell"
+        operation = "SELL"
+        action="CLOSE"
 
 
     else:
-        debt = my_account.base_debt * close_price
+        debt = my_account.base_debt * open_price
         my_account.quote_balance = my_account.quote_balance + quote_amount - debt
         my_account.base_balance = 0
 
         my_account.base_debt = 0
-        action = "buy"
+        operation = "BUY"
+        action = "COVER"
 
     trading_fee = count_trading_fee(my_account.quote_balance, trading_fee_rate)
     my_account.quote_balance = my_account.quote_balance - trading_fee
 
 
     trade_info = {
-        "action": action,
+        "unix": unix,
+        "date": date,
         "trade_number": int(trade_number),
-        "price": close_price,
-        "type": type_of_trade,
+        "action": action,
+        "operation": operation,
+        "operation_price": open_price,
+        "operation_stop_price": operation_stop_price,
+        "price": open_price,
+        "open": action,
+        "high": high_price,
+        "low": low_price,
+        "close": close_price,
         "base_amount": base_amount,
         "quote_amount": quote_amount,
         "trading_fee": trading_fee,
         "quantity": quantity,
-        "date": date,
         "quote_balance": my_account.quote_balance,
         "base_balance": my_account.base_balance,
         "base_debt": my_account.base_debt,
